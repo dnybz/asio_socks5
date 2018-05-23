@@ -1,6 +1,6 @@
 /**
 * @file boost_socks5.cpp
-* @brief Simple SOCKS5 proxy server realization using boost::asio library
+* @brief Simple SOCKS5 proxy server realization using standalone asio library
 * @author philave (philave7@gmail.com)
 */
 
@@ -9,11 +9,11 @@
 #include <string>
 #include <memory>
 #include <utility>
-#include <boost/asio.hpp>
+#include <asio.hpp>
 #include <fstream>
 #include "config_reader.hpp"
 
-using boost::asio::ip::tcp;
+using asio::ip::tcp;
 
 // Common log function
 inline void write_log(int prefix, short verbose, short verbose_level, int session_id, const std::string& what, const std::string& error_message = "")
@@ -64,8 +64,8 @@ private:
 	{
 		auto self(shared_from_this());
 
-		in_socket_.async_receive(boost::asio::buffer(in_buf_),
-			[this, self](boost::system::error_code ec, std::size_t length)
+		in_socket_.async_receive(asio::buffer(in_buf_),
+			[this, self](asio::error_code ec, std::size_t length)
 			{
 				if (!ec)
 				{
@@ -115,8 +115,8 @@ o  X'FF' NO ACCEPTABLE METHODS
 	{
 		auto self(shared_from_this());
 
-		boost::asio::async_write(in_socket_, boost::asio::buffer(in_buf_, 2), // Always 2-byte according to RFC1928
-			[this, self](boost::system::error_code ec, std::size_t length)
+		asio::async_write(in_socket_, asio::buffer(in_buf_, 2), // Always 2-byte according to RFC1928
+			[this, self](asio::error_code ec, std::size_t length)
 			{
 				if (!ec)
 				{	
@@ -133,8 +133,8 @@ o  X'FF' NO ACCEPTABLE METHODS
 	{
 		auto self(shared_from_this());
 
-		in_socket_.async_receive(boost::asio::buffer(in_buf_),
-			[this, self](boost::system::error_code ec, std::size_t length)
+		in_socket_.async_receive(asio::buffer(in_buf_),
+			[this, self](asio::error_code ec, std::size_t length)
 			{
 				if (!ec)
 				{
@@ -179,7 +179,7 @@ appropriate for the request type.
 					{
 					case 0x01: // IP V4 addres
 						if (length != 10) { write_log(1, 0, verbose_, session_id_, "SOCKS5 request length is invalid. Closing session."); return; }
-						remote_host_ = boost::asio::ip::address_v4(ntohl(*((uint32_t*)&in_buf_[4]))).to_string();
+						remote_host_ = asio::ip::address_v4(ntohl(*((uint32_t*)&in_buf_[4]))).to_string();
 						remote_port_ = std::to_string(ntohs(*((uint16_t*)&in_buf_[8])));
 						break;
 					case 0x03: // DOMAINNAME
@@ -206,7 +206,7 @@ appropriate for the request type.
 		auto self(shared_from_this());
 
 		resolver.async_resolve(tcp::resolver::query({ remote_host_, remote_port_ }),
-			[this, self](const boost::system::error_code& ec, tcp::resolver::iterator it)
+			[this, self](const asio::error_code& ec, tcp::resolver::iterator it)
 			{
 				if (!ec)
 				{
@@ -224,7 +224,7 @@ appropriate for the request type.
 	{
 		auto self(shared_from_this());
 		out_socket_.async_connect(*it, 
-			[this, self](const boost::system::error_code& ec)
+			[this, self](const asio::error_code& ec)
 			{
 				if (!ec)
 				{
@@ -289,8 +289,8 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 		std::memcpy(&in_buf_[4], &realRemoteIP, 4);
 		std::memcpy(&in_buf_[8], &realRemoteport, 2);
 
-		boost::asio::async_write(in_socket_, boost::asio::buffer(in_buf_, 10), // Always 10-byte according to RFC1928
-			[this, self](boost::system::error_code ec, std::size_t length)
+		asio::async_write(in_socket_, asio::buffer(in_buf_, 10), // Always 10-byte according to RFC1928
+			[this, self](asio::error_code ec, std::size_t length)
 			{
 				if (!ec)
 				{
@@ -308,8 +308,8 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 
 		// We must divide reads by direction to not permit second read call on the same socket.
 		if (direction & 0x1)
-			in_socket_.async_receive(boost::asio::buffer(in_buf_),
-				[this, self](boost::system::error_code ec, std::size_t length)
+			in_socket_.async_receive(asio::buffer(in_buf_),
+				[this, self](asio::error_code ec, std::size_t length)
 				{
 					if (!ec)
 					{
@@ -318,7 +318,7 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 
 						do_write(1, length);
 					}
-					else //if (ec != boost::asio::error::eof)
+					else //if (ec != asio::error::eof)
 					{
 						write_log(2, 1, verbose_, session_id_, "closing session. Client socket read error", ec.message());
 						// Most probably client closed socket. Let's close both sockets and exit session.
@@ -328,8 +328,8 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 				});
 
 		if (direction & 0x2)
-			out_socket_.async_receive(boost::asio::buffer(out_buf_),
-				[this, self](boost::system::error_code ec, std::size_t length)
+			out_socket_.async_receive(asio::buffer(out_buf_),
+				[this, self](asio::error_code ec, std::size_t length)
 				{
 					if (!ec)
 					{
@@ -338,7 +338,7 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 
 						do_write(2, length);
 					}
-					else //if (ec != boost::asio::error::eof)
+					else //if (ec != asio::error::eof)
 					{
 						write_log(2, 1, verbose_, session_id_, "closing session. Remote socket read error", ec.message());
 						// Most probably remote server closed socket. Let's close both sockets and exit session.
@@ -354,8 +354,8 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 		switch (direction)
 		{
 		case 1:
-			boost::asio::async_write(out_socket_, boost::asio::buffer(in_buf_, Length),
-				[this, self, direction](boost::system::error_code ec, std::size_t length)
+			asio::async_write(out_socket_, asio::buffer(in_buf_, Length),
+				[this, self, direction](asio::error_code ec, std::size_t length)
 				{
 					if (!ec)
 						do_read(direction);
@@ -368,8 +368,8 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 				});
 			break;
 		case 2:
-			boost::asio::async_write(in_socket_, boost::asio::buffer(out_buf_, Length),
-				[this, self, direction](boost::system::error_code ec, std::size_t length)
+			asio::async_write(in_socket_, asio::buffer(out_buf_, Length),
+				[this, self, direction](asio::error_code ec, std::size_t length)
 				{
 					if (!ec)
 						do_read(direction);
@@ -399,7 +399,7 @@ Fields marked RESERVED (RSV) must be set to X'00'.
 class Server
 {
 public:
-	Server(boost::asio::io_service& io_service, short port, unsigned buffer_size, short verbose)
+	Server(asio::io_service& io_service, short port, unsigned buffer_size, short verbose)
 		: acceptor_(io_service, tcp::endpoint(tcp::v4(), port)), 
 		in_socket_(io_service), buffer_size_(buffer_size), verbose_(verbose), session_id_(0)
 	{
@@ -410,7 +410,7 @@ private:
 	void do_accept()
 	{
 		acceptor_.async_accept(in_socket_,
-			[this](boost::system::error_code ec)
+			[this](asio::error_code ec)
 			{
 				if (!ec)
 				{
@@ -448,7 +448,7 @@ int main(int argc, char* argv[])
 		size_t buffer_size = conf.check_key("buffer_size") ? std::atoi(conf.get_key_value("buffer_size")) : 8192; // Default buffer_size
 		verbose = conf.check_key("verbose") ? std::atoi(conf.get_key_value("verbose")) : 0; // Default verbose_
 
-		boost::asio::io_service io_service;
+		asio::io_service io_service;
 		Server server(io_service, port, buffer_size, verbose);
 		io_service.run();
 	}

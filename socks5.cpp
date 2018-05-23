@@ -1,7 +1,7 @@
 /**
-* @file boost_socks5.cpp
+* @file socks5.cpp
 * @brief Simple SOCKS5 proxy server realization using standalone asio library
-* @author philave (philave7@gmail.com)
+* @author philave (philave7@gmail.com), cnfreebsd@163.com
 */
 
 #include <cstdlib>
@@ -29,7 +29,7 @@ inline void write_log(int prefix, short verbose, short verbose_level, int sessio
 		if (error_message.size() > 0)
 			std::cerr << ": " << error_message;
 		std::cerr << std::endl;
-	}
+}
 	else
 	{ 
 		std::cout << session << what;
